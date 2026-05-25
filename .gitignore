@@ -1,0 +1,20 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+Route\ Planner
+route-planner
+map-engine
+
+*.osm
+*.pbf
+*.xml
+
+.idea/
+*.iml
+.vscode/
+
+.DS_Store
+Thumbs.db
