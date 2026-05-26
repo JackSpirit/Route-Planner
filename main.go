@@ -80,6 +80,8 @@ func main() {
 	}
 
 	fmt.Printf("\n Success! Binary Scanning Complete\n")
+	BuildNetworkGraph()
+	fmt.Printf("Network Graph build with %d intersections\n", len(networkGraph))
 	fmt.Printf("Total Nodes cached: %d\n", len(nodeStorage))
 	fmt.Printf("Total Ways cached: %d\n", len(wayStorage))
 }
@@ -97,4 +99,26 @@ func GetWayCoordinates(wayID int64) [][]float64 {
 		}
 	}
 	return coordinates
+}
+
+func BuildNetworkGraph() {
+	for _, way := range wayStorage {
+
+		for i:=0; i<len(way.NodeIDs)-1; i++ {
+			nodeA := way.NodeIDs[i]
+			nodeB := way.NodeIDs[i+1]
+
+			networkGraph[nodeA] = append(networkGraph[nodeA], Edge{
+				ToNodeID: nodeB,
+				WayID: way.ID,
+				Distance: 0.0,
+			})
+
+			networkGraph[nodeB] = append(networkGraph[nodeB], Edge{
+				ToNodeID: nodeA,
+				WayID: way.ID,
+				Distance: 0.0,
+			})
+		}
+	}
 }
