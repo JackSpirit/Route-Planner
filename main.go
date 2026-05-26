@@ -42,9 +42,6 @@ func main() {
 		return
 	}
 
-	var nodeCount int64
-	var wayCount int64
-
 	fmt.Println("Streaming binary blocks")
 
 	for {
@@ -55,16 +52,25 @@ func main() {
 			fmt.Printf("Error during streaming: %v\n", err)
 			return
 		} else {
-			switch v.(type) {
+			switch v := v.(type) {
 			case *osmpbf.Node:
-				nodeCount++
+				
+				nodeStorage[v.ID] = Node{
+					ID: v.ID,
+					Lat: v.Lat,
+					Lon: v.Lon,
+				}
 			case *osmpbf.Way:
-			    wayCount++
+			    streetName := v.Tags["name"]
+
+				wayStorage[v.ID] = Way{
+					ID: v.ID,
+					Name: streetName,
+					NodeIDs: v.NodeIDs,
+				}
 			}
 		}
 	}
 
-	fmt.Printf("\n Success! Binary Scanning Complete")
-	fmt.Printf("Total Nodes Processed: %d\n", nodeCount)
-	fmt.Printf("Total Ways Processed: %d\n", wayCount)
+	fmt.Printf("\n Success! Binary Scanning Complete\n")
 }
