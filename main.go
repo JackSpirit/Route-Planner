@@ -73,4 +73,21 @@ func main() {
 	}
 
 	fmt.Printf("\n Success! Binary Scanning Complete\n")
+	fmt.Printf("Total Nodes cached: %d\n", len(nodeStorage))
+	fmt.Printf("Total Ways cached: %d\n", len(wayStorage))
+}
+
+func GetWayCoordinates(wayID int64) [][]float64 {
+	way, exists := wayStorage[wayID]
+	if !exists {
+		return nil
+	}
+
+	var coordinates [][]float64
+	for _, nodeID := range way.NodeIDs {
+		if node, found := nodeStorage[nodeID]; found {
+			coordinates = append(coordinates, []float64{node.Lat, node.Lon})
+		}
+	}
+	return coordinates
 }
