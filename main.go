@@ -20,9 +20,16 @@ type Way struct {
 	NodeIDs []int64
 }
 
+type Edge struct {
+	ToNodeID int64
+	WayID int64
+	Distance float64
+}
+
 var (
 	nodeStorage = make(map[int64]Node)
 	wayStorage = make(map[int64]Way)
+	networkGraph = make(map[int64][]Edge)
 )
 
 func main() {
