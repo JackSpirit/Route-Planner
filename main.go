@@ -8,6 +8,23 @@ import (
     "github.com/qedus/osmpbf"
 )
 
+type Node struct {
+	ID int64
+	Lat float64
+	Lon float64
+}
+
+type Way struct {
+	ID int64
+	Name string
+	NodeIDs []int64
+}
+
+var (
+	nodeStorage = make(map[int64]Node)
+	wayStorage = make(map[int64]Way)
+)
+
 func main() {
 	file, err := os.Open("delaware-260524.osm.pbf")
 	if err != nil {
