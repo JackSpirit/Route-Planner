@@ -7,6 +7,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let startMarker = null;
 let endMarker = null;
+let currentRouteLine = null;
 
 const greenIcon = new L.Icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -36,11 +37,56 @@ map.on('click', function(e) {
     } else if (!endMarker) {
         endMarker = L.marker([lat, lon], {icon: redIcon}).addTo(map).bindPopup("End").openPopup();
         console.log(`End selected: ${lat}, ${lon}`);
+
+        const startLat = startMarker.getLatLng().lat;
+        const startLon = startMarker.getLatLng().lng;
+        const endLat = endMarker.getLatLng().lat;
+        const endLon = endMarker.getLatLng().lng;
+
+        const url = `http://localhost:8080/route?start_lat=${startLat}&start_lon=${startLon}&end_lat=${endLat}&end_lon=${endLon}`;
+        console.log(`Fetching route from: ${url}`);
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Route data received successfully!", data);
+
+                if (currentRouteLine) {
+                    map.removeLayer(currentRouteLine);
+                }
+
+                if (!data.path || data.path.length === 0) {
+                    console.warn("Backend returned an empty path array!");
+                    return;
+                }
+
+                const latLngs = data.path.map(point => [point.lat, point.lon]);
+
+                currentRouteLine = L.polyline(latLngs, {
+                    color: '#2A81CB',
+                    weight: 5,
+                    opacity: 0.85
+                }).addTo(map);
+
+                map.fitBounds(currentRouteLine.getBounds(), { padding: [50, 50] });
+            })
+            .catch(error => {
+                console.error("Fetch failed:", error);
+            });
     } else {
         map.removeLayer(startMarker);
         map.removeLayer(endMarker);
+        if (currentRouteLine) {
+            map.removeLayer(currentRouteLine);
+        }
         startMarker = null;
         endMarker = null;
-        console.log("Markers reset");
+        currentRouteLine = null;
+        console.log("Markers and routes reset");
     }
 });
