@@ -110,21 +110,21 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func findClosestNode(lat, lon float64) int64 {
-	var closestNodeID int64 = -1
-	minDist := 999999.9
+    var i64ClosestNodeID int64 = -1
+    minDist := 1.7976931348623157e308 
 
-	for nodeID := range networkGraph {
-		node, exists := nodeStorage[nodeID]
-		if !exists {
-			continue
-		}
+    for nodeID := range networkGraph {
+        node, exists := nodeStorage[nodeID]
+        if !exists {
+            continue
+        }
 
-		d := CalculateDistance(lat, lon, node.Lat, node.Lon)
-		if d < minDist {
-			minDist = d
-			closestNodeID = nodeID
-		}
-	}
+        d := CalculateDistance(lat, lon, node.Lat, node.Lon)
+        if d < minDist {
+            minDist = d
+            i64ClosestNodeID = nodeID
+        }
+    }
 
-	return closestNodeID
+    return i64ClosestNodeID
 }
