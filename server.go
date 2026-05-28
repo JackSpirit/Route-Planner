@@ -49,7 +49,38 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Printf("Valid coordinates received: Start(%f, %f) -> End(%f, %f)\n", startLat, startLon, endLat, endLon)
+    
+
+	startNodeID := findClosestNode(startLat, startLon)
+	endNodeID := findClosestNode(endLat, endLon)
+
+	if startNodeID == -1 || endNodeID == -1 {
+		http.Error(w, `{"error": "Could not map coordinates to network nodes"}`, http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Printf("Successfully mapped to graph nodes: Start Node ID %d -> End Node ID %d\n", startNodeID, endNodeID)
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status": "success", "message": "Coordinates parsed and validated perfectly. Ready for node lookup!"}`))
+	w.Write([]byte(fmt.Sprintf(`{"status": "success", "message": "Mapped coordinates to nodes successfully!", "start_node": %d, "end_node": %d}`, startNodeID, endNodeID)))
+}
+
+func findClosestNode(lat, lon float64) int64 {
+	var closestNodeID int64 = -1
+	minDist := 999999.9
+
+	for nodeID := range networkGraph {
+		node, exists := nodeStorage[nodeID]
+		if !exists {
+			continue
+		}
+
+		d := CalculateDistance(lat, lon, node.Lat, node.Lon)
+		if d < minDist {
+			minDist = d
+			closestNodeID = nodeID
+		}
+	}
+
+	return closestNodeID
 }
