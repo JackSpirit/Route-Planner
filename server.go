@@ -1,18 +1,28 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 )
 
+type Coordinate struct {
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
+}
+
+type RouteResponse struct {
+	Path       []Coordinate `json:"path"`
+	DistanceKM float64      `json:"distance_km"`
+	NodeCount  int          `json:"node_count"`
+}
+
 func StartServer() {
 	mux := http.NewServeMux()
-
 	mux.HandleFunc("/route", handleRoute)
 
 	fmt.Println("Web server starting on http://localhost:8080..")
-
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		panic(err)
 	}
@@ -50,7 +60,6 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Valid coordinates received: Start(%f, %f) -> End(%f, %f)\n", startLat, startLon, endLat, endLon)
     
-
 	startNodeID := findClosestNode(startLat, startLon)
 	endNodeID := findClosestNode(endLat, endLon)
 
@@ -61,8 +70,37 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Successfully mapped to graph nodes: Start Node ID %d -> End Node ID %d\n", startNodeID, endNodeID)
 
+	nodePath := FindShortestPath(startNodeID, endNodeID)
+	if nodePath == nil {
+		http.Error(w, `{"error": "No continuous path found between these locations"}`, http.StatusNotFound)
+		return
+	}
+
+	var coordinates []Coordinate
+	var totalDistance float64
+	var prevNode Node
+
+	for i, nodeID := range nodePath {
+		node := nodeStorage[nodeID]
+		coordinates = append(coordinates, Coordinate{
+			Lat: node.Lat,
+			Lon: node.Lon,
+		})
+
+		if i > 0 {
+			totalDistance += CalculateDistance(prevNode.Lat, prevNode.Lon, node.Lat, node.Lon)
+		}
+		prevNode = node
+	}
+
+	response := RouteResponse{
+		Path:       coordinates,
+		DistanceKM: totalDistance/1000.0,
+		NodeCount:  len(coordinates),
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf(`{"status": "success", "message": "Mapped coordinates to nodes successfully!", "start_node": %d, "end_node": %d}`, startNodeID, endNodeID)))
+	json.NewEncoder(w).Encode(response)
 }
 
 func findClosestNode(lat, lon float64) int64 {
