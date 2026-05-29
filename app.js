@@ -8,6 +8,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let startMarker = null;
 let endMarker = null;
 let currentRouteLine = null;
+let currentIsochroneLayer = null;
 let selectedMode = "distance";
 
 const modeControl = L.control({ position: 'topright' });
@@ -17,13 +18,22 @@ modeControl.onAdd = function () {
     div.style.padding = '10px';
     div.style.borderRadius = '5px';
     div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+    div.style.display = 'flex';
+    div.style.flexDirection = 'column';
+    div.style.gap = '8px';
     
     div.innerHTML = `
-        <label for="routeMode" style="font-weight: bold; margin-right: 5px;">Routing Profile:</label>
-        <select id="routeMode" style="cursor: pointer; padding: 2px 5px;">
-            <option value="distance" selected>Shortest Distance</option>
-            <option value="time">Fastest Time</option>
-        </select>
+        <div>
+            <label for="routeMode" style="font-weight: bold; margin-right: 5px;">Routing Profile:</label>
+            <select id="routeMode" style="cursor: pointer; padding: 2px 5px;">
+                <option value="distance" selected>Shortest Distance</option>
+                <option value="time">Fastest Time</option>
+            </select>
+        </div>
+        <div>
+            <label for="isoMinutes" style="font-weight: bold; margin-right: 5px;">Isochrone Limit:</label>
+            <input type="number" id="isoMinutes" value="10" min="1" max="60" style="width: 50px; padding: 2px 5px; text-align: center;"> <span style="font-size: 12px; color: #555;">mins</span>
+        </div>
     `;
     
     L.DomEvent.disableClickPropagation(div);
@@ -59,6 +69,50 @@ const redIcon = new L.Icon({
 });
 
 map.on('click', function(e) {
+    if (e.originalEvent.shiftKey) {
+        const lat = e.latlng.lat;
+        const lon = e.latlng.lng;
+        
+        const minutes = document.getElementById('isoMinutes').value || 10;
+
+        const url = `http://localhost:8080/isochrone?lat=${lat}&lon=${lon}&minutes=${minutes}`;
+        console.log(`Fetching isochrone from: ${url}`);
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (currentIsochroneLayer) {
+                    map.removeLayer(currentIsochroneLayer);
+                }
+
+                if (!data.segments || data.segments.length === 0) {
+                    console.warn("No reachable roads returned for this time window.");
+                    return;
+                }
+
+                const lines = [];
+                data.segments.forEach(segment => {
+                    const polyline = L.polyline(segment, {
+                        color: '#3388ff',
+                        weight: 4,
+                        opacity: 0.85
+                    });
+                    lines.push(polyline);
+                });
+
+                currentIsochroneLayer = L.featureGroup(lines).addTo(map);
+            })
+            .catch(error => {
+                console.error("Isochrone fetch failed:", error);
+            });
+        return;
+    }
+
     const lat = e.latlng.lat;
     const lon = e.latlng.lng;
 
@@ -114,6 +168,10 @@ map.on('click', function(e) {
         map.removeLayer(endMarker);
         if (currentRouteLine) {
             map.removeLayer(currentRouteLine);
+        }
+        if (currentIsochroneLayer) {
+            map.removeLayer(currentIsochroneLayer);
+            currentIsochroneLayer = null;
         }
         startMarker = null;
         endMarker = null;

@@ -18,9 +18,14 @@ type RouteResponse struct {
 	NodeCount  int          `json:"node_count"`
 }
 
+type IsochroneResponse struct {
+	Segments [][][]float64 `json:"segments"`
+}
+
 func StartServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/route", handleRoute)
+	mux.HandleFunc("/isochrone", handleIsochrone)
 
 	fmt.Println("Web server starting on http://localhost:8080..")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
@@ -102,12 +107,59 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 
 	response := RouteResponse{
 		Path:       coordinates,
-		DistanceKM: totalDistance/1000.0,
+		DistanceKM: totalDistance / 1000.0,
 		NodeCount:  len(coordinates),
 	}
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
+}
+
+func handleIsochrone(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	latStr := r.URL.Query().Get("lat")
+	lonStr := r.URL.Query().Get("lon")
+	minutesStr := r.URL.Query().Get("minutes")
+
+	if latStr == "" || lonStr == "" || minutesStr == "" {
+		http.Error(w, `{"error": "Missing parameters"}`, http.StatusBadRequest)
+		return
+	}
+
+	lat, err1 := strconv.ParseFloat(latStr, 64)
+	lon, err2 := strconv.ParseFloat(lonStr, 64)
+	minutes, err3 := strconv.ParseFloat(minutesStr, 64)
+
+	if err1 != nil || err2 != nil || err3 != nil {
+		http.Error(w, `{"error": "Invalid numerical parameters"}`, http.StatusBadRequest)
+		return
+	}
+
+	startNodeID := findClosestNode(lat, lon)
+	if startNodeID == -1 {
+		http.Error(w, `{"error": "Start node not found"}`, http.StatusInternalServerError)
+		return
+	}
+
+	maxTimeSeconds := minutes * 60.0
+	polygonPoints := FindIsochroneBoundary(startNodeID, maxTimeSeconds)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(IsochroneResponse{Segments: polygonPoints})
 }
 
 func findClosestNode(lat, lon float64) int64 {
