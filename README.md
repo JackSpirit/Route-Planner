@@ -1,36 +1,42 @@
-```markdown
-# OpenStreetMap Route Planner & Reachability Engine
+OpenStreetMap Route Planner & Reachability Engine
 
 A high-performance, lightweight graph-based routing engine built from scratch in Go, paired with an interactive Leaflet.js map frontend. The project parses raw OpenStreetMap (OSM) data into an in-memory graph structure, allowing users to calculate optimal point-to-point routes and visualize reachable road networks within dynamic time limits (Isochrones).
+Features
 
-## Features
+    Custom OSM Parser: Processes node and way data structures into a spatial graph layout.
 
-* **Custom OSM Parser:** Processes node and way data structures into a spatial graph layout.
-* **Dual Routing Profiles:**
-    * *Shortest Distance:* Calculates paths optimizing strictly for minimum physical mileage.
-    * *Fastest Time:* Weighs edges using road classification speed limits (motorways, trunk roads, residential, etc.) to optimize for travel duration.
-* **High-Performance Dijkstra Implementation:** Implements a custom minimum binary heap wrapper (`container/heap`) supporting fast `O((E + V) log V)` node updates and state management.
-* **Dynamic Network Isochrones:** Computes a full reachability analysis from any point. Instead of inaccurate geometric bounding shapes, it paints the exact tree branch skeleton of navigable roads reachable under your chosen time threshold.
-* **Interactive Leaflet Map Control UI:** Provides an integrated HUD widget for seamless routing profile switching and live travel-time adjustments.
+    Dual Routing Profiles:
 
----
+        Shortest Distance: Calculates paths optimizing strictly for minimum physical mileage.
 
-## Project Structure
+        Fastest Time: Weighs edges using road classification speed limits (motorways, trunk roads, residential, etc.) to optimize for travel duration.
 
-```text
-├── app.js            # Frontend logic (Leaflet initialization, event handlers, API fetch)
-├── index.html        # Map viewport container and DOM structure
-├── main.go           # Entry point (initializes data parsing and launches components)
-├── graph.go          # Core graph generation, distance formulas, and edge metrics
-├── queue.go          # Custom Min-Priority Queue implementation tracking path item weights
-├── router.go         # Core point-to-point Dijkstra shortest-path engine
-├── isochrone.go      # Multi-destination exploratory BFS/Dijkstra reachability algorithm
-└── server.go         # HTTP Server providing REST API endpoints (/route & /isochrone)
+    High-Performance Dijkstra Implementation: Implements a custom minimum binary heap wrapper (container/heap) supporting fast O((E + V) log V) node updates and state management.
 
-```
+    Dynamic Network Isochrones: Computes a full reachability analysis from any point. Instead of inaccurate geometric bounding shapes, it paints the exact tree branch skeleton of navigable roads reachable under your chosen time threshold.
 
----
+    Interactive Leaflet Map Control UI: Provides an integrated HUD widget for seamless routing profile switching and live travel-time adjustments.
 
+Project Structure
+
+    app.js: Frontend logic (Leaflet initialization, event handlers, API fetch)
+
+    index.html: Map viewport container and DOM structure
+
+    main.go: Entry point (initializes data parsing and launches components)
+
+    graph.go: Core graph generation, distance formulas, and edge metrics
+
+    queue.go: Custom Min-Priority Queue implementation tracking path item weights
+
+    router.go: Core point-to-point Dijkstra shortest-path engine
+
+    isochrone.go: Multi-destination exploratory BFS/Dijkstra reachability algorithm
+
+    server.go: HTTP Server providing REST API endpoints (/route and /isochrone)
+
+
+    
 ## Backend API Specifications
 
 The Go backend spins up an HTTP server on `http://localhost:8080`.
