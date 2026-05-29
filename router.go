@@ -2,77 +2,92 @@ package main
 
 import (
 	"container/heap"
-	"math"
 )
 
-func FindShortestPath(startNodeID, endNodeID int64) []int64 {
-	if startNodeID == endNodeID {
-		return []int64{startNodeID}
+type MinHeapWrapper struct {
+	pq    PriorityQueue
+	items map[int64]*PathItem
+}
+
+func NewMinHeapWrapper() *MinHeapWrapper {
+	w := &MinHeapWrapper{
+		pq:    make(PriorityQueue, 0),
+		items: make(map[int64]*PathItem),
 	}
+	heap.Init(&w.pq)
+	return w
+}
 
-	dist := make(map[int64]float64)
-	parent := make(map[int64]int64)
-	
-	pq := make(PriorityQueue, 0)
-	heap.Init(&pq)
+func (w *MinHeapWrapper) PushOrUpdate(nodeID int64, distance float64) {
+	if item, exists := w.items[nodeID]; exists {
+		if distance < item.Distance {
+			item.Distance = distance
+			heap.Fix(&w.pq, item.index)
+		}
+	} else {
+		item := &PathItem{
+			NodeID:   nodeID,
+			Distance: distance,
+		}
+		w.items[nodeID] = item
+		heap.Push(&w.pq, item)
+	}
+}
 
-	dist[startNodeID] = 0.0
-	heap.Push(&pq, &PathItem{
-		NodeID:   startNodeID,
-		Distance: 0.0,
-	})
+func (w *MinHeapWrapper) Pop() int64 {
+	if len(w.pq) == 0 {
+		return -1
+	}
+	item := heap.Pop(&w.pq).(*PathItem)
+	delete(w.items, item.NodeID)
+	return item.NodeID
+}
 
-	var found bool
+func (w *MinHeapWrapper) Len() int {
+	return len(w.pq)
+}
+
+func FindShortestPath(startNodeID, endNodeID int64, mode string) []int64 {
+	gScore := make(map[int64]float64)
+	parentMap := make(map[int64]int64)
+
+	for nodeID := range networkGraph {
+		gScore[nodeID] = 1.7976931348623157e308
+	}
+	gScore[startNodeID] = 0.0
+
+	pq := NewMinHeapWrapper()
+	pq.PushOrUpdate(startNodeID, 0.0)
 
 	for pq.Len() > 0 {
-		current := heap.Pop(&pq).(*PathItem)
-		u := current.NodeID
+		currentNodeID := pq.Pop()
 
-		if u == endNodeID {
-			found = true
+		if currentNodeID == endNodeID {
 			break
 		}
 
-		if current.Distance > dist[u] {
-			continue
-		}
+		for _, edge := range networkGraph[currentNodeID] {
+			neighborID := edge.ToNodeID
+			weight := CalculateEdgeWeight(edge, mode)
+			tentativeGScore := gScore[currentNodeID] + weight
 
-		edges := networkGraph[u]
-		for _, edge := range edges {
-			v := edge.ToNodeID
-			weight := edge.Distance
-
-			currentDist, exists := dist[v]
-			if !exists {
-				currentDist = math.Inf(1)
-			}
-
-			if dist[u]+weight < currentDist {
-				dist[v] = dist[u] + weight
-				parent[v] = u
-				heap.Push(&pq, &PathItem{
-					NodeID:   v,
-					Distance: dist[v],
-				})
+			if tentativeGScore < gScore[neighborID] {
+				gScore[neighborID] = tentativeGScore
+				parentMap[neighborID] = currentNodeID
+				pq.PushOrUpdate(neighborID, tentativeGScore)
 			}
 		}
-	}
-
-	if !found {
-		return nil
 	}
 
 	var path []int64
 	curr := endNodeID
+	if _, exists := parentMap[curr]; !exists && curr != startNodeID {
+		return nil
+	}
 	for curr != startNodeID {
-		path = append(path, curr)
-		curr = parent[curr]
+		path = append([]int64{curr}, path...)
+		curr = parentMap[curr]
 	}
-	path = append(path, startNodeID)
-
-	for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
-		path[i], path[j] = path[j], path[i]
-	}
-
+	path = append([]int64{startNodeID}, path...)
 	return path
 }

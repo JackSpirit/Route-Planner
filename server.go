@@ -48,12 +48,17 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 	startLonStr := r.URL.Query().Get("start_lon")
 	endLatStr := r.URL.Query().Get("end_lat")
 	endLonStr := r.URL.Query().Get("end_lon")
+	mode := r.URL.Query().Get("mode")
+
+	if mode != "distance" && mode != "time" {
+		mode = "distance"
+	}
 
 	if startLatStr == "" || startLonStr == "" || endLatStr == "" || endLonStr == "" {
-		http.Error(w, `{"error": "Missing coordinates parameters (start_lat, start_lon, end_lat, end_lon required)"}`, http.StatusBadRequest)
+		http.Error(w, `{"error": "Missing coordinates parameters"}`, http.StatusBadRequest)
 		return
 	}
-    
+
 	startLat, err1 := strconv.ParseFloat(startLatStr, 64)
 	startLon, err2 := strconv.ParseFloat(startLonStr, 64)
 	endLat, err3 := strconv.ParseFloat(endLatStr, 64)
@@ -64,8 +69,6 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Valid coordinates received: Start(%f, %f) -> End(%f, %f)\n", startLat, startLon, endLat, endLon)
-    
 	startNodeID := findClosestNode(startLat, startLon)
 	endNodeID := findClosestNode(endLat, endLon)
 
@@ -74,9 +77,7 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Successfully mapped to graph nodes: Start Node ID %d -> End Node ID %d\n", startNodeID, endNodeID)
-
-	nodePath := FindShortestPath(startNodeID, endNodeID)
+	nodePath := FindShortestPath(startNodeID, endNodeID, mode)
 	if nodePath == nil {
 		http.Error(w, `{"error": "No continuous path found between these locations"}`, http.StatusNotFound)
 		return
@@ -110,21 +111,18 @@ func handleRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func findClosestNode(lat, lon float64) int64 {
-    var i64ClosestNodeID int64 = -1
-    minDist := 1.7976931348623157e308 
-
-    for nodeID := range networkGraph {
-        node, exists := nodeStorage[nodeID]
-        if !exists {
-            continue
-        }
-
-        d := CalculateDistance(lat, lon, node.Lat, node.Lon)
-        if d < minDist {
-            minDist = d
-            i64ClosestNodeID = nodeID
-        }
-    }
-
-    return i64ClosestNodeID
+	var closestNodeID int64 = -1
+	minDist := 1.7976931348623157e308
+	for nodeID := range networkGraph {
+		node, exists := nodeStorage[nodeID]
+		if !exists {
+			continue
+		}
+		d := CalculateDistance(lat, lon, node.Lat, node.Lon)
+		if d < minDist {
+			minDist = d
+			closestNodeID = nodeID
+		}
+	}
+	return closestNodeID
 }

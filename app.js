@@ -8,6 +8,37 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let startMarker = null;
 let endMarker = null;
 let currentRouteLine = null;
+let selectedMode = "distance";
+
+const modeControl = L.control({ position: 'topright' });
+modeControl.onAdd = function () {
+    const div = L.DomUtil.create('div', 'mode-control-container');
+    div.style.background = 'white';
+    div.style.padding = '10px';
+    div.style.borderRadius = '5px';
+    div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+    
+    div.innerHTML = `
+        <label for="routeMode" style="font-weight: bold; margin-right: 5px;">Routing Profile:</label>
+        <select id="routeMode" style="cursor: pointer; padding: 2px 5px;">
+            <option value="distance" selected>Shortest Distance</option>
+            <option value="time">Fastest Time</option>
+        </select>
+    `;
+    
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+};
+modeControl.addTo(map);
+
+document.getElementById('routeMode').addEventListener('change', function (e) {
+    selectedMode = e.target.value;
+    if (currentRouteLine) {
+        map.removeLayer(currentRouteLine);
+        currentRouteLine = null;
+    }
+    console.log(`Routing mode changed to: ${selectedMode}`);
+});
 
 const greenIcon = new L.Icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -43,7 +74,7 @@ map.on('click', function(e) {
         const endLat = endMarker.getLatLng().lat;
         const endLon = endMarker.getLatLng().lng;
 
-        const url = `http://localhost:8080/route?start_lat=${startLat}&start_lon=${startLon}&end_lat=${endLat}&end_lon=${endLon}`;
+        const url = `http://localhost:8080/route?start_lat=${startLat}&start_lon=${startLon}&end_lat=${endLat}&end_lon=${endLon}&mode=${selectedMode}`;
         console.log(`Fetching route from: ${url}`);
 
         fetch(url)
